@@ -1,0 +1,422 @@
+/* ─────────────────────────────────────────────
+   Play mode — the opt-in anime/game layer. None of this renders while Play mode is off.
+   ───────────────────────────────────────────── */
+@keyframes float { 50% { translate: 0 -6px; } }
+
+/* ─────────────────────────────────────────────
+   Arsenal: dock, cursors, effects
+   ───────────────────────────────────────────── */
+.fx-layer { position: fixed; inset: 0; z-index: 45; width: 100vw; height: 100vh; pointer-events: none; }
+
+.fx-text {
+  position: fixed;
+  z-index: 46;
+  font-family: var(--display);
+  font-size: 56px;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--fx-color, var(--paper));
+  -webkit-text-stroke: 4px var(--ink);
+  paint-order: stroke fill;
+  pointer-events: none;
+  translate: -50% -50%;
+  animation: fx-text 0.95s var(--ease) forwards;
+}
+@keyframes fx-text {
+  0% { opacity: 0; transform: rotate(var(--tilt)) scale(2.4); }
+  15% { opacity: 1; transform: rotate(var(--tilt)) scale(1); }
+  70% { opacity: 1; transform: rotate(var(--tilt)) scale(1.05) translateY(-10px); }
+  100% { opacity: 0; transform: rotate(var(--tilt)) scale(1.1) translateY(-26px); }
+}
+
+html[data-weapon], html[data-weapon] * { cursor: none !important; }
+html[data-weapon] body { user-select: none; -webkit-user-select: none; }
+html[data-weapon] .arsenal, html[data-weapon] .arsenal *, html[data-weapon] .nav, html[data-weapon] .nav *, html[data-weapon] dialog, html[data-weapon] dialog * { cursor: auto !important; }
+
+.weapon-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  transform: translate(-200px, -200px);
+}
+.weapon-cursor[data-touch='true'] { display: none; }
+.weapon-cursor img {
+  position: absolute;
+  max-width: none; /* the cursor box is 0×0 — don't let the global img rule shrink sprites to nothing */
+  width: 72px;
+  height: 72px;
+  left: -36px;
+  top: -36px;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.35));
+  transition: opacity 0.15s, transform 0.15s;
+}
+.weapon-cursor--demon_slayer_sword img { width: 110px; height: 110px; left: -20px; top: -95px; transform: rotate(30deg); }
+.weapon-cursor--leviathan_axe img { left: -24px; top: -60px; transform: rotate(-20deg); }
+.weapon-cursor--golden_headband img { width: 86px; height: 86px; left: -43px; top: -43px; }
+.weapon-cursor--kunai img { left: -14px; top: -62px; transform: rotate(35deg); }
+.weapon-cursor--hidden_blade img { left: -18px; top: -62px; transform: rotate(25deg); }
+.weapon-cursor.is-empty img { opacity: 0.15; transform: scale(0.6); }
+.weapon-cursor::after {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  border-radius: 50%;
+}
+/* The dial centre sits at (256, 362) of the 512² compass sprite → put that point on the pointer. */
+.weapon-cursor--compass img:first-child { width: 96px; height: 96px; left: -48px; top: -68px; }
+.weapon-cursor .weapon-cursor__needle { width: 46px; height: 46px; left: 0; top: 0; transform: translate(-50%, -50%); transition: none; }
+.weapon-cursor__heat {
+  position: absolute;
+  left: 30px;
+  top: 30px;
+  padding: 0 0.4rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 900;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.eagle-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 44;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(8, 24, 58, 0.35);
+  backdrop-filter: grayscale(1) brightness(0.5) contrast(1.15);
+  -webkit-backdrop-filter: grayscale(1) brightness(0.5) contrast(1.15);
+  transition: opacity 0.25s;
+}
+html.eagle-vision .eagle-overlay { opacity: 1; }
+
+.is-frozen {
+  position: relative;
+  outline: 3px solid #9fe6ff !important;
+  box-shadow: 0 0 0 6px rgba(159, 230, 255, 0.4), inset 0 0 60px rgba(120, 210, 255, 0.85) !important;
+  filter: saturate(0.5) brightness(1.04);
+  transition: filter 0.3s;
+}
+
+.arsenal {
+  position: fixed;
+  left: var(--gutter);
+  bottom: 1rem;
+  z-index: 50;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
+  max-width: calc(100vw - 2 * var(--gutter));
+}
+.arsenal__bar { display: flex; align-items: stretch; gap: 0.5rem; }
+.arsenal__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.9rem 0.35rem 0.4rem;
+  border: var(--border);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--display);
+  font-size: 1rem;
+  box-shadow: 4px 4px 0 var(--paper), 4px 4px 0 2px var(--ink);
+  cursor: pointer;
+}
+.arsenal__toggle img, .arsenal__toggle > span[aria-hidden] {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 50%;
+  font-size: 1.2rem;
+}
+.arsenal__status {
+  display: grid;
+  margin: 0;
+  padding: 0.3rem 0.7rem;
+  border: var(--border);
+  background: var(--paper);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  max-width: 360px;
+}
+.arsenal__status strong { font-family: var(--display); font-weight: 400; font-size: 0.95rem; }
+.arsenal__status small { font-weight: 700; opacity: 0.6; }
+.arsenal__status span { font-weight: 500; }
+.arsenal__off { width: 44px; border: var(--border); background: var(--paper); font-weight: 900; cursor: pointer; }
+
+.arsenal__panel {
+  width: min(540px, calc(100vw - 2 * var(--gutter)));
+  padding: 0.9rem;
+  background: var(--paper) var(--grain);
+  border: var(--border);
+  box-shadow: 8px 8px 0 var(--ink);
+  animation: panel-in 0.25s var(--ease);
+}
+@keyframes panel-in { from { opacity: 0; transform: translateY(12px) scale(0.97); } }
+.arsenal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.7rem; }
+.arsenal__head strong { font-family: var(--display); font-weight: 400; font-size: 1.3rem; }
+.arsenal__head small { font-family: var(--body); font-size: 0.75rem; font-weight: 900; }
+.arsenal__mute { padding: 0.2rem 0.6rem; border: 2px solid var(--ink); background: var(--paper); font-weight: 900; font-size: 0.75rem; cursor: pointer; }
+.arsenal__mute[aria-pressed='true'] { background: var(--ink); color: var(--paper); }
+.arsenal__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.arsenal__item {
+  display: grid;
+  justify-items: center;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.45rem 0.3rem;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s;
+}
+.arsenal__item img { width: 58px; height: 58px; object-fit: contain; transition: transform 0.25s var(--ease); }
+.arsenal__item:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--ink); }
+.arsenal__item:hover img { transform: scale(1.12) rotate(-8deg); }
+.arsenal__item.is-on { background: var(--ink); color: var(--paper); }
+.arsenal__item.is-on img { background: var(--paper); border-radius: 50%; }
+.arsenal__name { font-weight: 900; font-size: 0.72rem; line-height: 1.1; }
+.arsenal__owner { font-size: 0.62rem; opacity: 0.7; line-height: 1.1; }
+
+
+/* ─────────────────────────────────────────────
+   Armory (3D relic carousel)
+   ───────────────────────────────────────────── */
+.armory { height: min(70vh, 600px); min-height: 420px; padding: 0; background: var(--paper); }
+.armory__canvas { position: absolute; inset: 0; z-index: 1; display: block; width: 100%; height: 100%; touch-action: pan-y; }
+.armory__card {
+  position: absolute;
+  left: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 2;
+  width: min(340px, calc(100% - 2.5rem));
+  padding: 1rem 1.1rem;
+  background: var(--paper);
+  border: var(--border);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+.armory__card.is-on { animation: panel-in 0.3s var(--ease); }
+.armory__owner { margin: 0; font-size: 0.7rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.armory__card h3 { margin-top: 0.2rem; font-family: var(--display); font-weight: 400; font-size: 1.6rem; text-transform: uppercase; }
+.armory__jp { margin: 0.2rem 0 0.5rem; font-weight: 900; font-size: 0.85rem; }
+.armory__lore { margin: 0 0 0.8rem; font-size: 0.92rem; color: var(--ink-2); }
+.armory__actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.armory__hint { margin: 0; font-weight: 900; }
+.armory__nav { position: absolute; right: 1.25rem; bottom: 1.25rem; z-index: 2; display: flex; gap: 0.5rem; }
+
+.filmstrip {
+  display: flex;
+  gap: 0.6rem;
+  margin: 1.25rem 0 0;
+  padding: 0.25rem 0.25rem 0.75rem;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.filmstrip__item {
+  display: grid;
+  justify-items: center;
+  width: 96px;
+  padding: 0.35rem;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s;
+}
+.filmstrip__item img { width: 72px; height: 72px; object-fit: contain; }
+.filmstrip__item img.is-missing { visibility: hidden; }
+.filmstrip__item span { font-size: 0.68rem; font-weight: 900; line-height: 1.15; text-align: center; }
+.filmstrip__item:hover { transform: translateY(-3px); box-shadow: 3px 3px 0 var(--ink); }
+.filmstrip__item.is-on { background: var(--ink); color: var(--paper); }
+.filmstrip__item.is-on img { background: var(--paper); border-radius: 50%; }
+
+
+/* ─────────────────────────────────────────────
+   Stickers (Blender sprites on the page)
+   ───────────────────────────────────────────── */
+.sticker {
+  position: absolute;
+  z-index: 2;
+  width: 110px;
+  height: 110px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  filter: drop-shadow(3px 3px 0 var(--ink));
+  transition: transform 0.2s var(--ease);
+}
+.sticker img { width: 100%; height: 100%; object-fit: contain; }
+.sticker img.is-missing { display: none; }
+.sticker:hover { transform: rotate(-8deg) scale(1.08); }
+.sticker--corner { top: 0.75rem; right: 0.75rem; width: 96px; height: 96px; }
+.sticker--head { top: clamp(4rem, 9vh, 6rem); right: var(--gutter); width: 150px; height: 150px; transform: rotate(8deg); }
+.sticker--ramen { top: 2.5rem; right: var(--gutter); width: 140px; height: 140px; filter: drop-shadow(3px 3px 0 var(--paper)); }
+
+
+/* ─────────────────────────────────────────────
+   Navigation journeys (Wukong / Kratos / Naruto / Ezio)
+   ───────────────────────────────────────────── */
+.journey {
+  position: fixed;
+  right: 1.1rem;
+  bottom: 1rem;
+  z-index: 49;
+  display: grid;
+  gap: 0.6rem;
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s var(--ease);
+}
+.journey.is-scrolled { opacity: 1; transform: none; pointer-events: auto; }
+.journey__btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  padding: 4px;
+  border: var(--border);
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 0.15s var(--ease);
+}
+.journey__btn:hover { transform: scale(1.08) rotate(-6deg); }
+.journey__btn img { width: 100%; height: 100%; object-fit: contain; }
+.journey__btn span {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+.journey__btn.is-thrown img { opacity: 0; }
+
+.kunai-track {
+  --p: 0;
+  position: fixed;
+  top: 76px;
+  right: 6px;
+  bottom: 12px;
+  z-index: 29;
+  width: 3px;
+  background: repeating-linear-gradient(to bottom, var(--ink) 0 6px, transparent 6px 12px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.kunai-track__kunai {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--p) * 100%);
+  width: 34px;
+  height: 34px;
+  max-width: none;
+  transform: translate(-50%, -50%) rotate(180deg);
+}
+
+.leap-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 47;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle at 50% 40%, #fff 0%, #fff 45%, rgba(255, 255, 255, 0) 75%);
+}
+.leap-flash.is-on { animation: leap 1s ease-out both; }
+@keyframes leap { 0% { opacity: 0; } 30% { opacity: 1; } 55% { opacity: 1; } 100% { opacity: 0; } }
+
+
+/* ─────────────────────────────────────────────
+   Drake's treasure hunt
+   ───────────────────────────────────────────── */
+.treasure {
+  position: absolute;
+  z-index: 4;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: none;
+  opacity: 0.32;
+  cursor: pointer;
+  transform: rotate(-18deg);
+  transition: opacity 0.2s, transform 0.2s var(--ease);
+}
+.treasure:hover { opacity: 1; transform: rotate(0) scale(1.25); }
+.treasure img { width: 100%; height: 100%; object-fit: contain; }
+.treasure--hero { right: 16px; top: 16px; }
+.treasure--case { right: 12px; top: 12px; }
+.treasure--project { right: 12px; top: 12px; }
+.treasure--skills { left: 50%; bottom: 10px; }
+.treasure--contact { right: -12px; top: -14px; }
+
+.treasure-count {
+  position: fixed;
+  left: var(--gutter);
+  bottom: 5rem;
+  z-index: 49;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.15rem 0.6rem 0.15rem 0.2rem;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+.treasure-count img { width: 26px; height: 26px; object-fit: contain; }
+
+.reward {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 70;
+  width: min(420px, calc(100vw - 32px));
+  text-align: center;
+  transform: translate(-50%, -50%);
+  box-shadow: 12px 12px 0 var(--ink);
+  animation: panel-in 0.35s var(--ease);
+}
+.reward__chest { width: 160px; height: 160px; margin: -1rem auto 0; object-fit: contain; }
+.reward__label { margin: 0; font-size: 0.75rem; font-weight: 900; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.reward h3 { margin: 0.2rem 0 0.5rem; font-family: var(--display); font-weight: 400; font-size: 1.8rem; text-transform: uppercase; }
+.reward .actions { justify-content: center; margin-top: 1rem; }
+
+/* hover wiggle on Blender items */
+.sticker:hover img, .filmstrip__item:hover img, .arsenal__item:hover img { animation: wiggle 0.5s ease-in-out; }
+@keyframes wiggle { 25% { transform: rotate(-10deg) scale(1.08); } 60% { transform: rotate(7deg); } }
+
+
+@media (max-width: 720px) {
+  .arsenal__grid { grid-template-columns: repeat(4, 1fr); }
+  .arsenal__item img { width: 44px; height: 44px; }
+  .arsenal__status { display: none; }
+  .sticker--head { display: none; }
+  .sticker--ramen { width: 90px; height: 90px; top: 1.5rem; }
+  .kunai-track { display: none; }
+}

@@ -1,0 +1,241 @@
+/* ─────────────────────────────────────────────
+   Opening sequence. html[data-intro] is set before first paint by an inline script in <head>:
+   "show" → overlay visible + page scroll locked; "seen" → overlay never renders.
+   ───────────────────────────────────────────── */
+.intro { display: none; }
+html[data-intro='show'] { overflow: hidden; }
+html[data-intro='show'] .intro {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: block;
+  overflow: hidden;
+  background: var(--paper) var(--grain);
+  cursor: pointer;
+}
+
+.intro__lines {
+  position: absolute;
+  inset: -40%;
+  background: repeating-conic-gradient(from 0deg at 50% 55%, var(--ink) 0deg 0.6deg, transparent 0.6deg 4deg);
+  mask-image: radial-gradient(circle at 50% 55%, transparent 22%, #000 60%);
+  -webkit-mask-image: radial-gradient(circle at 50% 55%, transparent 22%, #000 60%);
+  opacity: 0.14;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.intro.is-beat .intro__lines { opacity: 0.24; transform: scale(1.03); }
+.intro__tone {
+  position: absolute;
+  inset: 0;
+  background: var(--tone);
+  opacity: 0.12;
+  mask-image: linear-gradient(to top, #000, transparent 45%);
+  -webkit-mask-image: linear-gradient(to top, #000, transparent 45%);
+}
+.intro__canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+.intro__head {
+  position: absolute;
+  top: clamp(1rem, 4vh, 2.5rem);
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 0.3rem;
+  pointer-events: none;
+  animation: intro-drop 0.6s var(--ease) both;
+}
+.intro__presents {
+  margin: 0;
+  padding: 0.15rem 0.8rem;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 900;
+  font-size: 0.85rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+.intro__vol { margin: 0; font-weight: 900; font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+@keyframes intro-drop { from { opacity: 0; transform: translateY(-16px); } }
+
+.intro__loading {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+  transform: translate(-50%, -50%);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+.intro__bar { display: block; width: min(260px, 60vw); height: 12px; border: var(--border); background: var(--tone-fine); }
+.intro__bar span { display: block; height: 100%; background: var(--ink); transition: width 0.3s var(--ease); }
+
+/* roll call along the bottom — names light up as each character lands */
+.intro__roll {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(4.5rem, 10vh, 6rem);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0 1rem;
+  list-style: none;
+  pointer-events: none;
+}
+.intro__roll li {
+  padding: 0.05rem 0.55rem;
+  border: 2px solid var(--ink);
+  font-weight: 900;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.2;
+  transition: opacity 0.2s, background 0.2s, color 0.2s, transform 0.2s var(--ease);
+}
+.intro__roll li.is-in { opacity: 1; background: var(--ink); color: var(--paper); transform: translateY(-3px); }
+
+/* sound-effect / name pops at a character's head */
+.intro__pop {
+  position: fixed;
+  z-index: 3;
+  font-family: var(--display);
+  font-size: clamp(1.1rem, 2.2vw, 1.6rem);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--paper);
+  -webkit-text-stroke: 3px var(--ink);
+  paint-order: stroke fill;
+  pointer-events: none;
+  translate: -50% -100%;
+  animation: intro-pop 1.1s var(--ease) forwards;
+}
+.intro__pop--big { font-size: clamp(1.6rem, 3.6vw, 2.6rem); color: var(--pop, var(--paper)); }
+@keyframes intro-pop {
+  0% { opacity: 0; transform: scale(2.2) rotate(-8deg); }
+  15% { opacity: 1; transform: scale(1) rotate(-4deg); }
+  75% { opacity: 1; transform: translateY(-12px) rotate(-4deg); }
+  100% { opacity: 0; transform: translateY(-26px) rotate(-4deg); }
+}
+
+/* title card the cast presents */
+.intro__title {
+  position: absolute;
+  left: 50%;
+  top: clamp(4.5rem, 12vh, 7rem);
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  gap: 0.4rem;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: intro-title 0.45s var(--ease) both;
+}
+.intro__title h1 {
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(2.6rem, 8vw, 6rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-shadow: 4px 4px 0 var(--paper), 7px 7px 0 var(--ink);
+}
+.intro__title h1 span { color: transparent; -webkit-text-stroke: 2px var(--ink); text-shadow: none; }
+.intro__role { margin: 0; padding: 0.1rem 0.7rem; background: var(--ink); color: var(--paper); font-weight: 900; letter-spacing: 0.08em; }
+.intro__bubble {
+  position: relative;
+  margin: 0 0 0.6rem;
+  padding: 0.6rem 1rem;
+  background: var(--paper);
+  border: var(--border);
+  border-radius: 24px;
+  font-weight: 900;
+}
+.intro__bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--paper);
+  border-right: var(--border);
+  border-bottom: var(--border);
+  transform: translateX(-50%) rotate(45deg);
+}
+@keyframes intro-title { from { opacity: 0; transform: translateX(-50%) scale(1.4); } }
+
+.intro__controls {
+  position: absolute;
+  right: var(--gutter);
+  bottom: 1.2rem;
+  z-index: 4;
+  display: flex;
+  gap: 0.6rem;
+  cursor: default;
+}
+.intro__btn {
+  padding: 0.45rem 0.9rem;
+  border: var(--border);
+  background: var(--paper);
+  font-weight: 900;
+  font-size: 0.88rem;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.intro__btn--ink { background: var(--ink); color: var(--paper); }
+.intro__btn[aria-pressed='true'] { background: var(--paper-2); }
+
+/* shown only when the browser is blocking audio */
+.intro__unmute {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(7.5rem, 16vh, 9.5rem);
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border: var(--border);
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 900;
+  box-shadow: 4px 4px 0 var(--paper), 4px 4px 0 2px var(--ink);
+  transform: translateX(-50%);
+  cursor: pointer;
+  animation: intro-unmute 1.2s ease-in-out infinite;
+}
+@keyframes intro-unmute { 50% { transform: translateX(-50%) scale(1.06); } }
+
+/* exit: an ink slash wipes across, then the whole overlay fades away to reveal the site */
+.intro__wipe {
+  position: absolute;
+  inset: -20%;
+  z-index: 5;
+  background: var(--ink);
+  clip-path: polygon(0 0, 0 0, 0 0);
+  pointer-events: none;
+}
+.intro.is-exiting .intro__wipe { animation: intro-wipe 0.9s cubic-bezier(0.7, 0, 0.3, 1) forwards; }
+@keyframes intro-wipe {
+  0% { clip-path: polygon(0 0, 0 0, 0 0); }
+  55% { clip-path: polygon(0 0, 140% 0, 0 140%); }
+  100% { clip-path: polygon(100% 100%, 240% 0, 0 240%); }
+}
+html[data-intro='show'] .intro.is-leaving { opacity: 0; transform: scale(1.02); transition: opacity 0.6s ease, transform 0.6s ease; pointer-events: none; }
+
+@media (max-width: 720px) {
+  .intro__roll { bottom: 4.2rem; }
+  .intro__controls { left: var(--gutter); justify-content: flex-end; }
+}
