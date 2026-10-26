@@ -1,0 +1,12 @@
+// Cloudflare Workers deployment: serve the static export in ./out (built by `pnpm build`).
+// Having this file stops `wrangler deploy` from auto-configuring the OpenNext server adapter,
+// which this fully static site doesn't need.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "portfolio",
+  "compatibility_date": "2026-10-19",
+  "assets": {
+    "directory": "./out",
+    "not_found_handling": "404-page"
+  }
+}
